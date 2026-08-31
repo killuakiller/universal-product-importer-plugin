@@ -1,0 +1,154 @@
+.upi-wrap .upi-stat-grid { display: flex; gap: 16px; margin: 16px 0 24px; flex-wrap: wrap; }
+.upi-stat { background: #fff; border: 1px solid #ddd; border-left: 4px solid #ddd; border-radius: 8px; padding: 14px 20px; min-width: 120px; display: flex; align-items: center; gap: 12px; }
+.upi-stat-icon { font-size: 28px; width: 28px; height: 28px; color: #c3c4c7; flex-shrink: 0; }
+.upi-stat-num { display: block; font-size: 24px; font-weight: 600; line-height: 1.2; }
+.upi-stat-label { font-size: 12px; color: #666; }
+.upi-stat-draft      { border-left-color: #2271b1; }
+.upi-stat-draft .upi-stat-icon      { color: #2271b1; }
+.upi-stat-pending    { border-left-color: #d98a00; }
+.upi-stat-pending .upi-stat-icon    { color: #d98a00; }
+.upi-stat-published  { border-left-color: #1a7a1a; }
+.upi-stat-published .upi-stat-icon  { color: #1a7a1a; }
+.upi-stat-failed     { border-left-color: #a71d2a; }
+.upi-stat-failed .upi-stat-icon     { color: #a71d2a; }
+.upi-stat-cancelled  { border-left-color: #999; }
+.upi-stat-cancelled .upi-stat-icon  { color: #999; }
+
+.upi-filter-tabs { margin: 10px 0; }
+.upi-filter-tabs a { text-decoration: none; }
+.upi-filter-tabs a.current { font-weight: 600; }
+
+.upi-filter-bar { display: flex; gap: 8px; align-items: center; margin: 10px 0 14px; flex-wrap: wrap; }
+
+.upi-bulk-toolbar {
+	position: sticky; top: 32px; z-index: 50;
+	background: #1d2327; color: #fff; padding: 10px 14px; border-radius: 6px;
+	margin-bottom: 10px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+}
+.upi-bulk-toolbar.hidden { display: none; }
+.upi-bulk-toolbar select { max-width: 160px; }
+
+.upi-title-input { width: 100%; margin-bottom: 4px; }
+.upi-link-btn { background: none; border: none; color: #2271b1; cursor: pointer; font-size: 11px; padding: 0; }
+.upi-link-danger { color: #a71d2a; }
+
+.upi-btn-danger { background: #a71d2a; border-color: #8a1723; color: #fff; }
+.upi-btn-danger:hover { background: #8a1723; border-color: #6f1219; color: #fff; }
+
+.upi-quick-select { display: inline-flex; align-items: center; gap: 6px; margin-left: 16px; padding-left: 16px; border-left: 1px solid #dcdcde; }
+.upi-quick-select label { font-weight: 600; }
+.upi-quick-select input[type="number"] { width: 70px; }
+
+.upi-change-template-select { max-width: 100%; }
+
+.upi-thumbs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.upi-thumb { position: relative; width: 36px; height: 36px; cursor: grab; }
+.upi-thumb img { width: 36px; height: 36px; object-fit: cover; border-radius: 4px; display: block; }
+.upi-star { position: absolute; top: -6px; left: -6px; font-size: 12px; color: #d98a00; }
+.upi-thumb-del {
+	position: absolute; top: -6px; right: -6px; width: 16px; height: 16px; line-height: 14px;
+	border-radius: 50%; background: #a71d2a; color: #fff; border: none; cursor: pointer; font-size: 11px; padding: 0;
+}
+.upi-thumb-add {
+	width: 36px; height: 36px; border: 1px dashed #aaa; background: none; border-radius: 4px; cursor: pointer; font-size: 10px;
+}
+
+.upi-muted { color: #999; }
+
+.upi-drawer {
+	position: fixed; top: 0; right: 0; bottom: 0; width: 420px; background: #fff;
+	box-shadow: -2px 0 8px rgba(0,0,0,0.15); z-index: 1000; overflow-y: auto;
+}
+.upi-drawer.hidden { display: none; }
+.upi-drawer-inner { padding: 20px; }
+.upi-drawer-inner textarea { width: 100%; margin-bottom: 12px; }
+.upi-drawer-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+.upi-pagination { margin-top: 10px; display: flex; gap: 10px; align-items: center; }
+
+.upi-log-level { padding: 2px 6px; border-radius: 3px; font-size: 11px; text-transform: uppercase; }
+.upi-log-info { background: #e5f5e0; color: #1a7a1a; }
+.upi-log-warning { background: #fff3cd; color: #8a6d00; }
+.upi-log-error { background: #f8d7da; color: #a71d2a; }
+
+.upi-placeholder-box { background: #fff; border: 1px dashed #ccc; border-radius: 8px; padding: 30px; text-align: center; color: #666; margin-top: 16px; }
+
+.upi-tags-input { width: 100%; }
+
+/* Publish Queue — status badge, dùng chung style với .upi-log-level */
+.upi-status-badge { padding: 2px 8px; border-radius: 3px; font-size: 11px; text-transform: uppercase; display: inline-block; }
+.upi-status-pending   { background: #fff3cd; color: #8a6d00; }
+.upi-status-published { background: #e5f5e0; color: #1a7a1a; }
+.upi-status-failed    { background: #f8d7da; color: #a71d2a; }
+.upi-status-cancelled { background: #e2e3e5; color: #555; }
+
+/* Modal hẹn giờ Publish (trang Drafts) — cùng quy ước .hidden với .upi-drawer/.upi-zoom-preview */
+.upi-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 100000; display: flex; align-items: center; justify-content: center; }
+.upi-modal-overlay.hidden { display: none; }
+.upi-modal-box { background: #fff; border-radius: 6px; padding: 24px; width: 90%; max-width: 420px; box-shadow: 0 4px 20px rgba(0,0,0,.2); }
+.upi-modal-box h2 { margin-top: 0; }
+.upi-modal-field { margin-bottom: 14px; }
+.upi-modal-field label { display: block; font-weight: 600; margin-bottom: 4px; }
+.upi-modal-field input[type="number"] { width: 100%; max-width: 160px; }
+.upi-modal-eta { background: #f0f0f1; border-radius: 4px; padding: 8px 12px; font-size: 13px; margin-bottom: 16px; }
+.upi-modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* Hover-zoom ảnh (Bug 27) — hoàn toàn client-side */
+.upi-zoom-preview {
+	position: fixed;
+	width: 260px;
+	height: 260px;
+	background-color: #fff;
+	background-size: contain;
+	background-repeat: no-repeat;
+	background-position: center;
+	border: 1px solid #ccc;
+	border-radius: 8px;
+	box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+	z-index: 9999;
+	pointer-events: none;
+}
+.upi-zoom-preview.hidden { display: none; }
+
+/* Templates — card grid (thay cho bảng dày đặc), badge, dọn inline style */
+.upi-template-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin: 16px 0 28px; max-width: 1200px; }
+.upi-template-card { background: #fff; border: 1px solid #dcdcde; border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; transition: box-shadow .15s ease, border-color .15s ease; }
+.upi-template-card:hover { box-shadow: 0 2px 10px rgba(0,0,0,.08); border-color: #c3c4c7; }
+.upi-template-card-cover { height: 120px; background: #f6f7f7; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.upi-template-card-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.upi-template-card-cover .dashicons { font-size: 40px; width: 40px; height: 40px; color: #c3c4c7; }
+.upi-template-card-body { padding: 12px 14px 4px; flex: 1; }
+.upi-template-card-body h3 { margin: 0 0 8px; font-size: 14px; line-height: 1.3; }
+.upi-template-card-meta { display: flex; flex-wrap: wrap; gap: 6px; }
+.upi-badge { display: inline-block; background: #f0f0f1; color: #3c434a; font-size: 11px; padding: 2px 8px; border-radius: 10px; white-space: nowrap; }
+.upi-badge-info { background: #e5f1fb; color: #0a4b78; }
+.upi-badge-muted { color: #888; }
+.upi-template-card-actions { display: flex; gap: 6px; align-items: center; padding: 10px 14px; border-top: 1px solid #f0f0f1; margin-top: 8px; }
+.upi-template-card-actions form { display: inline; margin: 0; }
+
+/* Template — dropdown đóng/mở bọc checklist chọn nhiều category (wp_terms_checklist, giống metabox Category của Post/Product) — đóng sẵn để không chiếm hết trang khi site có nhiều category */
+.upi-cat-dropdown { max-width: 400px; }
+.upi-cat-dropdown-toggle {
+	display: flex; align-items: center; justify-content: space-between; gap: 8px;
+	width: 100%; background: #fff; border: 1px solid #8c8f94; border-radius: 4px;
+	padding: 0 8px; height: 30px; cursor: pointer; font-size: 14px; color: #2c3338; text-align: left;
+}
+.upi-cat-dropdown-toggle:hover { border-color: #2271b1; }
+.upi-cat-dropdown.open .upi-cat-dropdown-toggle { border-color: #2271b1; box-shadow: 0 0 0 1px #2271b1; }
+.upi-cat-dropdown-summary { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.upi-cat-dropdown-arrow { flex-shrink: 0; transition: transform .15s ease; color: #666; }
+.upi-cat-dropdown.open .upi-cat-dropdown-arrow { transform: rotate(180deg); }
+.upi-cat-dropdown-panel { margin-top: 6px; }
+.upi-cat-dropdown-panel.hidden { display: none; }
+
+.upi-cat-search { display: block; margin-bottom: 6px; max-width: 400px; }
+.upi-cat-checklist { max-height: 220px; overflow-y: auto; border: 1px solid #dcdcde; border-radius: 4px; padding: 8px 10px; background: #fff; max-width: 400px; }
+.upi-cat-checklist ul.children { margin-left: 18px; }
+.upi-cat-checklist li { margin: 3px 0; }
+.upi-cat-search-empty { color: #999; font-style: italic; margin: 6px 2px 0; }
+.upi-cat-search-empty.hidden { display: none; }
+
+.upi-inline-btn-sm { margin-left: 12px; font-size: 12px; vertical-align: middle; }
+.upi-tokens-table { max-width: 800px; }
+.upi-section-gap { margin-top: 2em; }
+.upi-pairing-code { font-size: 16px; }
