@@ -192,6 +192,24 @@ class UPI_Publish_Queue {
 	}
 
 	/**
+	 * Huỷ MỌI dòng đang 'pending' trong toàn bộ hàng đợi — dùng khi hẹn giờ
+	 * nhầm cả loạt và muốn dừng lại hết một lúc thay vì bấm Huỷ từng dòng.
+	 */
+	public static function cancel_all_pending(): int {
+		global $wpdb;
+		$table = self::table();
+		$ids   = $wpdb->get_col( "SELECT id FROM {$table} WHERE status = 'pending'" );
+
+		$cancelled = 0;
+		foreach ( $ids as $id ) {
+			if ( self::cancel( (int) $id ) ) {
+				$cancelled++;
+			}
+		}
+		return $cancelled;
+	}
+
+	/**
 	 * "Lên lịch lại" — dùng cho 1 dòng đã 'failed'/'cancelled' trong Publish
 	 * Queue, KHÔNG bắt user quay lại trang Drafts tick chọn lại. Tạo 1 dòng
 	 * hàng đợi MỚI cho đúng post_id đó (không sửa lại dòng cũ — giữ nguyên

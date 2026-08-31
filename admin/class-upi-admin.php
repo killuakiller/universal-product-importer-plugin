@@ -28,6 +28,7 @@ class UPI_Admin {
 		add_action( 'admin_post_upi_bulk_publish_drafts', array( $this, 'handle_bulk_publish_drafts' ) );
 		add_action( 'admin_post_upi_schedule_bulk_publish', array( $this, 'handle_schedule_bulk_publish' ) );
 		add_action( 'admin_post_upi_cancel_scheduled_publish', array( $this, 'handle_cancel_scheduled_publish' ) );
+		add_action( 'admin_post_upi_cancel_all_pending', array( $this, 'handle_cancel_all_pending' ) );
 		add_action( 'admin_post_upi_reschedule_publish', array( $this, 'handle_reschedule_publish' ) );
 		add_action( 'admin_post_upi_delete_draft', array( $this, 'handle_delete_draft' ) );
 		add_action( 'admin_post_upi_bulk_delete_drafts', array( $this, 'handle_bulk_delete_drafts' ) );
@@ -346,6 +347,19 @@ class UPI_Admin {
 		}
 
 		wp_safe_redirect( admin_url( 'admin.php?page=upi-publish-queue' ) );
+		exit;
+	}
+
+	/** Huỷ MỌI dòng đang chờ trong Publish Queue cùng lúc (hẹn giờ nhầm cả loạt). */
+	public function handle_cancel_all_pending() {
+		if ( ! current_user_can( 'manage_woocommerce' ) ) {
+			wp_die( 'Không đủ quyền.' );
+		}
+		check_admin_referer( 'upi_cancel_all_pending' );
+
+		$cancelled = UPI_Publish_Queue::cancel_all_pending();
+
+		wp_safe_redirect( add_query_arg( array( 'page' => 'upi-publish-queue', 'cancelled_all' => $cancelled ), admin_url( 'admin.php' ) ) );
 		exit;
 	}
 

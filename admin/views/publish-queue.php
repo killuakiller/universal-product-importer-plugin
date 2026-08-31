@@ -38,6 +38,8 @@ $unscheduled_count = (int) $wpdb->get_var(
 );
 
 $reschedule_url_base = wp_nonce_url( admin_url( 'admin-post.php?action=upi_reschedule_publish' ), 'upi_reschedule_publish' );
+$cancel_all_url      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_cancel_all_pending' ), 'upi_cancel_all_pending' );
+$cancelled_all_notice = isset( $_GET['cancelled_all'] ) ? absint( $_GET['cancelled_all'] ) : null;
 ?>
 <div class="wrap upi-wrap">
 	<h1>Publish Queue</h1>
@@ -56,6 +58,9 @@ $reschedule_url_base = wp_nonce_url( admin_url( 'admin-post.php?action=upi_resch
 	<?php endif; ?>
 	<?php if ( null !== $auto_queued_notice ) : ?>
 		<div class="notice notice-info is-dismissible"><p>Số lượng chọn ở trang Drafts khá lớn (<?php echo esc_html( $auto_queued_notice ); ?> sản phẩm) — đã tự động chuyển sang hàng đợi nền để tránh treo trang, rải đều cách nhau tối thiểu 5 giây/sản phẩm. Xem tiến độ ở bảng dưới.</p></div>
+	<?php endif; ?>
+	<?php if ( null !== $cancelled_all_notice ) : ?>
+		<div class="notice notice-success is-dismissible"><p>Đã huỷ <?php echo esc_html( $cancelled_all_notice ); ?> dòng đang chờ.</p></div>
 	<?php endif; ?>
 
 	<div class="upi-stat-grid">
@@ -76,6 +81,14 @@ $reschedule_url_base = wp_nonce_url( admin_url( 'admin-post.php?action=upi_resch
 			<div><span class="upi-stat-num"><?php echo esc_html( $counts['cancelled'] ); ?></span><span class="upi-stat-label">Đã huỷ</span></div>
 		</div>
 	</div>
+
+	<?php if ( $counts['pending'] > 0 ) : ?>
+		<p>
+			<a href="<?php echo esc_url( $cancel_all_url ); ?>" class="button" onclick="return confirm('Huỷ TẤT CẢ <?php echo esc_js( $counts['pending'] ); ?> dòng đang chờ trong hàng đợi? Không thể hoàn tác.');">
+				Huỷ tất cả (<?php echo esc_html( $counts['pending'] ); ?> đang chờ)
+			</a>
+		</p>
+	<?php endif; ?>
 
 	<?php if ( $unscheduled_count > 0 ) : ?>
 		<div class="notice notice-info">
