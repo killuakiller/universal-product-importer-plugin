@@ -17,6 +17,28 @@ define( 'UPI_VERSION', '0.9.10' );
 define( 'UPI_PATH', plugin_dir_path( __FILE__ ) );
 define( 'UPI_URL', plugin_dir_url( __FILE__ ) );
 
+/**
+ * Self-update from the private GitHub repo (killuakiller/universal-product-importer-plugin).
+ *
+ * UPI_GH_TOKEN is a read-only, repo-scoped GitHub fine-grained token,
+ * defined in wp-config.php. Without it, this site just won't see update
+ * notices (repo is private) but nothing else breaks.
+ */
+if ( is_admin() ) {
+	require_once UPI_PATH . 'includes/plugin-update-checker/plugin-update-checker.php';
+
+	$upiUpdateChecker = YahnisElsts\PluginUpdateChecker\v5\PucFactory::buildUpdateChecker(
+		'https://github.com/killuakiller/universal-product-importer-plugin/',
+		__FILE__,
+		'universal-product-importer-plugin'
+	);
+	$upiUpdateChecker->setBranch( 'main' );
+
+	if ( defined( 'UPI_GH_TOKEN' ) && UPI_GH_TOKEN ) {
+		$upiUpdateChecker->setAuthentication( UPI_GH_TOKEN );
+	}
+}
+
 require_once UPI_PATH . 'includes/class-upi-activator.php';
 require_once UPI_PATH . 'includes/class-upi-db.php';
 require_once UPI_PATH . 'includes/class-upi-logger.php';
