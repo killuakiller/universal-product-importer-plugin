@@ -8,13 +8,15 @@ $edit_id   = isset( $_GET['edit'] ) ? absint( $_GET['edit'] ) : 0;
 $editing   = $edit_id ? UPI_Templates::find( $edit_id ) : null;
 $gallery_ids = $editing ? UPI_Templates::gallery_attachment_ids( $editing ) : array();
 $selected_category_ids = $editing ? UPI_Templates::category_ids( $editing ) : array();
+$selected_tags     = $editing ? UPI_Templates::tags( $editing ) : array();
 $template_deleted = isset( $_GET['template_deleted'] );
 ?>
 <div class="wrap upi-wrap">
 	<h1>Templates</h1>
 	<p class="description">
-		Template quyết định category/shipping class/giá/brand/mô tả/Template Gallery khi tạo WooCommerce Draft.
-		Tags là dữ liệu riêng của từng sản phẩm (sửa trong Local Staging của Chrome Extension trước khi gửi), không thuộc Template.
+		Template quyết định category/tags/shipping class/giá/brand/mô tả/Template Gallery khi tạo WooCommerce Draft.
+		Tags của Template CỘNG DỒN với tag nhập riêng cho từng sản phẩm ở Local Staging của Chrome Extension (không
+		thay thế) — tag trùng nhau giữa 2 nguồn (không phân biệt hoa/thường) chỉ được gán 1 lần, không nhập đôi.
 		Mọi giá trị đều do bạn cấu hình — không có gì bị hard-code trong code, và không có field nào liên quan tới
 		WPCA hay bất kỳ plugin product-options nào khác (nằm ngoài phạm vi của Universal Product Importer).
 	</p>
@@ -39,6 +41,7 @@ $template_deleted = isset( $_GET['template_deleted'] );
 						$cat_names[] = $cat_term->name;
 					}
 				}
+				$tpl_tags    = UPI_Templates::tags( $t );
 				$shipping    = $t->shipping_class_id ? get_term( $t->shipping_class_id, 'product_shipping_class' ) : null;
 				$tpl_gallery = UPI_Templates::gallery_attachment_ids( $t );
 				$cover_id    = $tpl_gallery[0] ?? 0;
@@ -61,6 +64,9 @@ $template_deleted = isset( $_GET['template_deleted'] );
 						<h3><?php echo esc_html( $t->name ); ?></h3>
 						<div class="upi-template-card-meta">
 							<span class="upi-badge"><?php echo $cat_names ? esc_html( implode( ', ', $cat_names ) ) : 'Chưa gán category'; ?></span>
+							<?php if ( $tpl_tags ) : ?>
+								<span class="upi-badge upi-badge-muted">Tags: <?php echo esc_html( implode( ', ', $tpl_tags ) ); ?></span>
+							<?php endif; ?>
 							<?php if ( $shipping && ! is_wp_error( $shipping ) ) : ?>
 								<span class="upi-badge"><?php echo esc_html( $shipping->name ); ?></span>
 							<?php endif; ?>
@@ -150,6 +156,18 @@ $template_deleted = isset( $_GET['template_deleted'] );
 						</div>
 					</div>
 					<p class="description">Có thể chọn nhiều category — danh sách lấy trực tiếp từ WooCommerce trên site này. Bấm vào ô trên để mở/đóng, gõ tìm kiếm bên trong để lọc nhanh nếu site có nhiều category.</p>
+				</td>
+			</tr>
+			<tr>
+				<th><label>Tags</label></th>
+				<td>
+					<input type="text" name="tags" id="upi-tpl-tags" value="<?php echo esc_attr( implode( ', ', $selected_tags ) ); ?>" class="large-text" placeholder="Ví dụ: t-shirt, cotton, unisex" />
+					<p class="description">
+						Nhiều tag cách nhau bằng dấu phẩy. Áp dụng cho MỌI sản phẩm dùng Template này, CỘNG DỒN với tag
+						nhập riêng cho từng sản phẩm ở Local Staging của Chrome Extension (không thay thế) — tag trùng
+						nhau giữa Template và extension (không phân biệt hoa/thường, vd. "t-shirt" và "T-Shirt") chỉ
+						được gán 1 lần khi tạo Draft, không bị nhập đôi.
+					</p>
 				</td>
 			</tr>
 			<tr>

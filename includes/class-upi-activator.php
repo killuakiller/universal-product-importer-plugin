@@ -26,6 +26,7 @@ class UPI_Activator {
 			category_id BIGINT UNSIGNED NULL,
 			category_ids_json LONGTEXT NULL,
 			tags TEXT NULL,
+			tags_json LONGTEXT NULL,
 			regular_price DECIMAL(10,2) NULL,
 			sale_price DECIMAL(10,2) NULL,
 			shipping_class VARCHAR(191) NULL,
@@ -151,6 +152,6 @@ class UPI_Activator {
 
 		dbDelta( $sql );
 
-		update_option( 'upi_db_version', '7' );
+		update_option( 'upi_db_version', '8' );
 	}
 }

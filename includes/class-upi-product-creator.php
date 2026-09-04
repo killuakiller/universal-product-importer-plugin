@@ -269,10 +269,18 @@ class UPI_Product_Creator {
 			return new WP_Error( 'product_creation_failed', 'Không thể tạo WooCommerce product.', array( 'status' => 500 ) );
 		}
 
-		// TAGS — LUÔN là dữ liệu cấp sản phẩm (Product Workspace), KHÔNG bao
-		// giờ lấy từ Template — Template không còn field tags nữa.
-		$tags = $product->tags_json ? json_decode( $product->tags_json, true ) : array();
-		if ( is_array( $tags ) && $tags ) {
+		// TAGS — CỘNG DỒN 2 nguồn, giống CATEGORY phía trên: tag của Template
+		// (base, dùng chung cho mọi sản phẩm dùng template đó) + tag nhập
+		// trực tiếp trong Local Staging của extension (tags_json, riêng cho
+		// từng sản phẩm). KHÔNG có nguồn nào thay thế nguồn nào, chỉ hợp
+		// nhất rồi KHỬ TRÙNG không phân biệt hoa/thường + khoảng trắng thừa
+		// (vd. Template có tag "t-shirt" và extension cũng nhập "t-shirt"
+		// thì chỉ gán 1 tag, không bị nhập/gán trùng 2 lần).
+		$template_tags = $template ? UPI_Templates::tags( $template ) : array();
+		$product_tags  = $product->tags_json ? json_decode( $product->tags_json, true ) : array();
+		$product_tags  = is_array( $product_tags ) ? $product_tags : array();
+		$tags          = UPI_Templates::dedupe_tags( array_merge( $template_tags, $product_tags ) );
+		if ( $tags ) {
 			wp_set_object_terms( $wc_product_id, $tags, 'product_tag' );
 		}
 

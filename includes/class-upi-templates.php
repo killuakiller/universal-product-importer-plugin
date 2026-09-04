@@ -4,8 +4,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Template quyết định thông tin WooCommerce khi tạo draft: category, giá,
- * tags, brand, mô tả, SKU prefix, và Template Gallery (ảnh chung áp dụng
+ * Template quyết định thông tin WooCommerce khi tạo draft: category, tags,
+ * giá, brand, mô tả, SKU prefix, và Template Gallery (ảnh chung áp dụng
  * cho mọi sản phẩm dùng template này — vd. size chart, color chart).
  *
  * KHÔNG có field nào liên quan WPCA hay bất kỳ plugin product-options nào
@@ -20,6 +20,17 @@ if ( ! defined( 'ABSPATH' ) ) {
  * `category_ids_json`). Cột `category_id` (số ít) cũ vẫn còn trong DB cho
  * các bản cài trước đây nhưng không còn được đọc/ghi ở đâu nữa — cùng quy
  * ước với `shipping_class` ở trên, tránh phải chạy migration xoá cột.
+ *
+ * TAGS — Template có thể gán NHIỀU tag cùng lúc (lưu JSON ở `tags_json`,
+ * là chuỗi tên tag — KHÔNG phải term ID, giống hệt cách tag cấp sản phẩm
+ * lưu ở `upi_products.tags_json`). Lúc tạo Draft, tag của Template CỘNG
+ * DỒN với tag nhập ở Local Staging của extension (không thay thế), rồi
+ * KHỬ TRÙNG không phân biệt hoa/thường + khoảng trắng thừa — vd. Template
+ * có tag "t-shirt" và extension cũng nhập "t-shirt" thì chỉ gán 1 tag,
+ * không bị nhập 2 lần. Xem self::dedupe_tags() và UPI_Product_Creator.
+ * Cột `tags` (TEXT, số ít, kiểu cũ) vẫn còn trong DB cho các bản cài trước
+ * đây nhưng không còn được đọc/ghi ở đâu nữa — cùng quy ước với
+ * `category_id`/`shipping_class` ở trên.
  */
 class UPI_Templates {
 
@@ -27,6 +38,7 @@ class UPI_Templates {
 		return array(
 			'name'                => '%s',
 			'category_ids_json'   => '%s',
+			'tags_json'           => '%s',
 			'shipping_class_id'   => '%d',
 			'regular_price'       => '%f',
 			'sale_price'          => '%f',
@@ -103,6 +115,37 @@ class UPI_Templates {
 		return is_array( $ids ) ? array_values( array_unique( array_map( 'absint', $ids ) ) ) : array();
 	}
 
+	/** Danh sách tag (chuỗi tên, KHÔNG phải term ID) đã gán cho Template — có thể rỗng nếu chưa gán tag nào. Đã khử trùng không phân biệt hoa/thường. */
+	public static function tags( object $template ): array {
+		$tags = json_decode( $template->tags_json ?? '', true );
+		return is_array( $tags ) ? self::dedupe_tags( $tags ) : array();
+	}
+
+	/**
+	 * Khử trùng danh sách tag KHÔNG phân biệt hoa/thường + bỏ khoảng trắng
+	 * thừa (vd. "T-Shirt" và " t-shirt" tính là CÙNG 1 tag) — giữ lại lần
+	 * xuất hiện ĐẦU TIÊN để quyết định cách viết hoa/thường hiển thị cuối
+	 * cùng. Dùng chung cho tag của riêng Template và khi hợp nhất với tag
+	 * cấp sản phẩm (từ extension) lúc tạo Draft — xem UPI_Product_Creator.
+	 */
+	public static function dedupe_tags( array $tags ): array {
+		$seen   = array();
+		$result = array();
+		foreach ( $tags as $tag ) {
+			$tag = trim( (string) $tag );
+			if ( $tag === '' ) {
+				continue;
+			}
+			$key = mb_strtolower( $tag );
+			if ( isset( $seen[ $key ] ) ) {
+				continue;
+			}
+			$seen[ $key ] = true;
+			$result[]     = $tag;
+		}
+		return $result;
+	}
+
 	private static function sanitize( array $data ): array {
 		$clean = array();
 
@@ -118,6 +161,12 @@ class UPI_Templates {
 			// "rỗng nghĩa là KHÔNG áp dụng" — chưa chọn category nào thì lưu
 			// NULL, không lưu mảng JSON rỗng "[]".
 			$clean['category_ids_json'] = $ids ? wp_json_encode( $ids ) : null;
+		}
+		if ( array_key_exists( 'tags', $data ) ) {
+			$tags = is_array( $data['tags'] ) ? $data['tags'] : array();
+			$tags = self::dedupe_tags( array_map( 'sanitize_text_field', $tags ) );
+			// "rỗng nghĩa là KHÔNG áp dụng" — giống category_ids ở trên.
+			$clean['tags_json'] = $tags ? wp_json_encode( $tags ) : null;
 		}
 		if ( array_key_exists( 'shipping_class_id', $data ) ) {
 			$clean['shipping_class_id'] = ( $data['shipping_class_id'] !== '' && $data['shipping_class_id'] !== null && (int) $data['shipping_class_id'] > 0 )

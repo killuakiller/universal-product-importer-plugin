@@ -177,9 +177,19 @@ class UPI_Admin {
 			? array_filter( array_map( 'absint', (array) $_POST['tax_input']['product_cat'] ) )
 			: array();
 
+		// Tags nhập dạng text, cách nhau bằng dấu phẩy (giống UI nhập tag
+		// quen thuộc của WordPress) — KHÔNG phải checklist taxonomy như
+		// category, vì tag của Template CỘNG DỒN với tag cấp sản phẩm nhập
+		// tự do ở Local Staging của extension, không giới hạn trong danh
+		// sách term đã có sẵn.
+		$tags = isset( $_POST['tags'] )
+			? array_filter( array_map( 'trim', explode( ',', wp_unslash( $_POST['tags'] ) ) ) )
+			: array();
+
 		$data = array(
 			'name'              => wp_unslash( $_POST['name'] ?? '' ),
 			'category_ids'      => $category_ids,
+			'tags'              => $tags,
 			'shipping_class_id' => $_POST['shipping_class_id'] ?? 0,
 			'regular_price'     => $_POST['regular_price'] ?? '',
 			'sale_price'        => $_POST['sale_price'] ?? '',
@@ -216,6 +226,7 @@ class UPI_Admin {
 				array(
 					'name'              => $source->name . ' (Copy)',
 					'category_ids'      => UPI_Templates::category_ids( $source ),
+					'tags'              => UPI_Templates::tags( $source ),
 					'shipping_class_id' => $source->shipping_class_id,
 					'regular_price'     => $source->regular_price,
 					'sale_price'        => $source->sale_price,
