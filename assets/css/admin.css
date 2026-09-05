@@ -152,3 +152,25 @@
 .upi-tokens-table { max-width: 800px; }
 .upi-section-gap { margin-top: 2em; }
 .upi-pairing-code { font-size: 16px; }
+
+/* Drafts — bảng: ép vertical-align: middle cho MỌI ô, tránh lệch dòng khi
+   1 ô có <select>/button cao hơn nội dung text bình thường của ô khác. */
+.upi-drafts-table th,
+.upi-drafts-table td { vertical-align: middle; }
+.upi-change-template-select { width: 100%; max-width: 200px; height: 30px; }
+/* Actions: trộn button WP core (.button) với link thường/link nhỏ trong
+   cùng ô trước đây không có layout gì nên cao thấp lệch nhau, xuống dòng
+   lộn xộn — giờ xếp hàng ngang canh giữa, khoảng cách đều. */
+.upi-drafts-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.upi-drafts-actions .button-small { height: 26px; line-height: 24px; }
+
+/* Bulk toolbar (Drafts) — số lượng đang chọn + link "Chọn tất cả (mọi
+   trang)"/"Bỏ chọn tất cả": nền tối nên không dùng màu link mặc định của
+   WP core (khó đọc trên nền #1d2327), style riêng cho rõ và tương phản đủ. */
+.upi-selected-count { font-weight: 600; }
+.upi-select-all-link {
+	background: none; border: none; cursor: pointer; padding: 0;
+	color: #7fc2ff; text-decoration: underline; font-size: 13px;
+}
+.upi-select-all-link:hover { color: #a8d8ff; }
+.upi-select-all-link.hidden { display: none; }

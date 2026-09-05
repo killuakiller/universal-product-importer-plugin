@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Universal Product Importer
  * Description: Generic, multi-site-capable product research importer: crawl products from marketplaces via the companion Chrome Extension, stage them in an Import Library, classify/edit them, then create WooCommerce Simple Product drafts from site-specific templates. No brand, domain, or third-party plugin (including WPCA) is assumed or touched.
- * Version: 0.9.12
+ * Version: 0.9.13
  * Requires PHP: 8.2
  * Requires Plugins: woocommerce
  * Author: Universal Product Importer
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'UPI_VERSION', '0.9.12' );
+define( 'UPI_VERSION', '0.9.13' );
 define( 'UPI_PATH', plugin_dir_path( __FILE__ ) );
 define( 'UPI_URL', plugin_dir_url( __FILE__ ) );
 

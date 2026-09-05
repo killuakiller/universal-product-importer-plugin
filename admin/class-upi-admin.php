@@ -65,6 +65,79 @@ class UPI_Admin {
 	}
 
 	/**
+	 * Xây dựng WP_Query args cho danh sách Draft (search/category/template) —
+	 * DÙNG CHUNG giữa trang Drafts (hiển thị, có phân trang) và
+	 * all_matching_draft_ids() (lấy full ID khi "Chọn tất cả X sản phẩm khớp
+	 * bộ lọc (mọi trang)" được bật). KHÔNG set posts_per_page/paged ở đây —
+	 * caller tự thêm tuỳ mục đích (phân trang để hiển thị, hoặc -1 để lấy hết).
+	 */
+	public static function draft_query_args( array $filters ): array {
+		$query_args = array(
+			'post_type'   => 'product',
+			'post_status' => 'draft',
+			'meta_query'  => array(
+				array( 'key' => '_source_marketplace', 'compare' => 'EXISTS' ),
+			),
+			'orderby'     => 'date',
+			'order'       => 'DESC',
+		);
+
+		if ( ! empty( $filters['s'] ) ) {
+			$query_args['s'] = $filters['s'];
+		}
+		if ( ! empty( $filters['product_cat'] ) ) {
+			$query_args['tax_query'] = array(
+				array( 'taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => absint( $filters['product_cat'] ) ),
+			);
+		}
+		if ( isset( $filters['template_id'] ) && '' !== $filters['template_id'] ) {
+			global $wpdb;
+			$products_table = UPI_DB::products_table();
+			if ( 'none' === $filters['template_id'] ) {
+				$matching_wc_ids = $wpdb->get_col( "SELECT wc_product_id FROM {$products_table} WHERE wc_product_id IS NOT NULL AND template_id IS NULL" );
+			} else {
+				$matching_wc_ids = $wpdb->get_col( $wpdb->prepare( "SELECT wc_product_id FROM {$products_table} WHERE wc_product_id IS NOT NULL AND template_id = %d", absint( $filters['template_id'] ) ) );
+			}
+			// array(0) thay vì mảng rỗng — post__in rỗng bị WP_Query BỎ QUA (coi
+			// như không lọc), array(0) chắc chắn trả về 0 kết quả.
+			$query_args['post__in'] = $matching_wc_ids ?: array( 0 );
+		}
+
+		return $query_args;
+	}
+
+	/** Lấy TOÀN BỘ post ID Draft khớp filter, bỏ qua phân trang — dùng cho "Chọn tất cả X sản phẩm khớp bộ lọc (mọi trang)". */
+	public static function all_matching_draft_ids( array $filters ): array {
+		$args                   = self::draft_query_args( $filters );
+		$args['posts_per_page'] = -1;
+		$args['fields']         = 'ids';
+		$args['no_found_rows']  = true;
+		return get_posts( $args );
+	}
+
+	/**
+	 * Danh sách post_id cho 1 thao tác hàng loạt ở trang Drafts.
+	 *
+	 * Bình thường là post_ids[] gửi lên từ checkbox của TRANG ĐANG XEM. Nhưng
+	 * khi người dùng bấm "Chọn tất cả X sản phẩm khớp bộ lọc (mọi trang)",
+	 * checkbox trên DOM chỉ phản ánh được các dòng đang hiển thị (tối đa
+	 * per_page dòng) — post_ids[] lúc đó KHÔNG đủ. Cờ select_all_matching=1
+	 * (kèm filter s/product_cat/template_id) báo hiệu bỏ qua post_ids[] và
+	 * truy vấn lại TOÀN BỘ ID khớp filter hiện tại trực tiếp từ DB.
+	 */
+	private static function resolve_bulk_draft_ids(): array {
+		if ( ! empty( $_POST['select_all_matching'] ) ) {
+			$filters = array(
+				's'           => isset( $_POST['s'] ) ? sanitize_text_field( wp_unslash( $_POST['s'] ) ) : '',
+				'product_cat' => isset( $_POST['product_cat'] ) ? absint( $_POST['product_cat'] ) : 0,
+				'template_id' => isset( $_POST['template_id'] ) ? sanitize_text_field( wp_unslash( $_POST['template_id'] ) ) : '',
+			);
+			return array_map( 'absint', self::all_matching_draft_ids( $filters ) );
+		}
+		return isset( $_POST['post_ids'] ) ? array_filter( array_map( 'absint', (array) $_POST['post_ids'] ) ) : array();
+	}
+
+	/**
 	 * Cảnh báo (notice) khi Publish Queue có dòng "Lỗi" — hiện trên mọi
 	 * trang của plugin (trừ chính trang Publish Queue đang lọc theo Lỗi, vì
 	 * lúc đó người dùng đã đang nhìn thấy rồi) để không phải tự vào kiểm tra
@@ -292,7 +365,7 @@ class UPI_Admin {
 		}
 		check_admin_referer( 'upi_bulk_publish_drafts' );
 
-		$ids = isset( $_POST['post_ids'] ) ? array_map( 'absint', (array) $_POST['post_ids'] ) : array();
+		$ids = self::resolve_bulk_draft_ids();
 
 		if ( count( $ids ) > self::BULK_PUBLISH_SYNC_LIMIT ) {
 			UPI_Publish_Queue::schedule_batch( $ids, UPI_Publish_Queue::MIN_INTERVAL, 0 );
@@ -329,7 +402,7 @@ class UPI_Admin {
 		}
 		check_admin_referer( 'upi_bulk_publish_drafts' );
 
-		$ids = isset( $_POST['post_ids'] ) ? array_filter( array_map( 'absint', (array) $_POST['post_ids'] ) ) : array();
+		$ids = self::resolve_bulk_draft_ids();
 
 		if ( empty( $ids ) ) {
 			wp_safe_redirect( admin_url( 'admin.php?page=upi-drafts' ) );
@@ -419,7 +492,7 @@ class UPI_Admin {
 		}
 		check_admin_referer( 'upi_bulk_delete_drafts', '_wpnonce_delete' );
 
-		$ids = isset( $_POST['post_ids'] ) ? array_filter( array_map( 'absint', (array) $_POST['post_ids'] ) ) : array();
+		$ids = self::resolve_bulk_draft_ids();
 
 		if ( count( $ids ) > self::BULK_DELETE_SYNC_LIMIT ) {
 			$scheduled = UPI_Product_Creator::schedule_bulk_delete( $ids );
@@ -452,7 +525,7 @@ class UPI_Admin {
 		}
 		check_admin_referer( 'upi_bulk_change_template', '_wpnonce_change_template' );
 
-		$ids         = isset( $_POST['post_ids'] ) ? array_filter( array_map( 'absint', (array) $_POST['post_ids'] ) ) : array();
+		$ids         = self::resolve_bulk_draft_ids();
 		$template_id = isset( $_POST['bulk_template_id'] ) && '' !== $_POST['bulk_template_id'] ? absint( $_POST['bulk_template_id'] ) : null;
 
 		if ( count( $ids ) > self::BULK_CHANGE_TEMPLATE_SYNC_LIMIT ) {

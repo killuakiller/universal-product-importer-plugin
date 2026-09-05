@@ -19,48 +19,44 @@ $search_term         = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_
 $filter_cat_id       = isset( $_GET['product_cat'] ) ? absint( $_GET['product_cat'] ) : 0;
 $filter_template_raw = isset( $_GET['template_id'] ) ? sanitize_text_field( wp_unslash( $_GET['template_id'] ) ) : '';
 $paged               = isset( $_GET['paged'] ) ? max( 1, absint( $_GET['paged'] ) ) : 1;
-$per_page            = 50;
+
+// Số dòng/trang chọn được — trước đây CỐ ĐỊNH 50, không có cách nào xem
+// nhiều hơn mỗi lần tải trang. Chỉ nhận giá trị trong danh sách cho phép để
+// tránh per_page tuỳ ý (?per_page=99999) làm nặng DB.
+$allowed_per_page = array( 20, 50, 100, 200 );
+$per_page         = isset( $_GET['per_page'] ) ? absint( $_GET['per_page'] ) : 50;
+if ( ! in_array( $per_page, $allowed_per_page, true ) ) {
+	$per_page = 50;
+}
 
 $templates = UPI_Templates::all();
 
-$query_args = array(
-	'post_type'      => 'product',
-	'post_status'    => 'draft',
-	'posts_per_page' => $per_page,
-	'paged'          => $paged,
-	'meta_query'     => array(
-		array( 'key' => '_source_marketplace', 'compare' => 'EXISTS' ),
-	),
-	'orderby'        => 'date',
-	'order'          => 'DESC',
+// Query args (search/category/template) DÙNG CHUNG với all_matching_draft_ids()
+// bên UPI_Admin — để "Chọn tất cả X sản phẩm khớp bộ lọc (mọi trang)" luôn
+// khớp CHÍNH XÁC với những gì trang này đang lọc/hiển thị.
+$draft_filters = array(
+	's'           => $search_term,
+	'product_cat' => $filter_cat_id,
+	'template_id' => $filter_template_raw,
 );
 
-if ( $search_term ) {
-	$query_args['s'] = $search_term;
-}
-if ( $filter_cat_id ) {
-	$query_args['tax_query'] = array(
-		array( 'taxonomy' => 'product_cat', 'field' => 'term_id', 'terms' => $filter_cat_id ),
-	);
-}
-if ( '' !== $filter_template_raw ) {
-	global $wpdb;
-	$products_table = UPI_DB::products_table();
-	if ( 'none' === $filter_template_raw ) {
-		$matching_wc_ids = $wpdb->get_col( "SELECT wc_product_id FROM {$products_table} WHERE wc_product_id IS NOT NULL AND template_id IS NULL" );
-	} else {
-		$matching_wc_ids = $wpdb->get_col( $wpdb->prepare( "SELECT wc_product_id FROM {$products_table} WHERE wc_product_id IS NOT NULL AND template_id = %d", absint( $filter_template_raw ) ) );
-	}
-	// array(0) thay vì mảng rỗng — post__in rỗng bị WP_Query BỎ QUA (coi như
-	// không lọc), trong khi array(0) chắc chắn trả về 0 kết quả (không có
-	// post ID nào = 0), đúng ý "lọc không khớp gì" thay vì âm thầm bỏ lọc.
-	$query_args['post__in'] = $matching_wc_ids ?: array( 0 );
-}
+$query_args                   = UPI_Admin::draft_query_args( $draft_filters );
+$query_args['posts_per_page'] = $per_page;
+$query_args['paged']          = $paged;
 
 $query = new WP_Query( $query_args );
 
 $post_ids       = wp_list_pluck( $query->posts, 'ID' );
 $canonical_by_wc = UPI_Products::find_all_by_wc_product_ids( $post_ids );
+
+// found_posts = TỔNG số khớp filter, không bị giới hạn bởi phân trang — dùng
+// cho cả dòng "Hiển thị X-Y trên tổng Z" lẫn nhãn/JS "Chọn tất cả (mọi
+// trang)". Tính ở đây (không phải trong nhánh có bài) để tránh "Undefined
+// variable" khi bộ lọc không khớp Draft nào (script phía dưới vẫn cần biến
+// này dù bảng rỗng).
+$total_matching = (int) $query->found_posts;
+$showing_from   = $total_matching ? ( ( $paged - 1 ) * $per_page + 1 ) : 0;
+$showing_to     = $total_matching ? min( $paged * $per_page, $total_matching ) : 0;
 
 $has_active_filter = '' !== $search_term || $filter_cat_id || '' !== $filter_template_raw;
 
@@ -130,6 +126,11 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 				<option value="<?php echo esc_attr( $tpl->id ); ?>" <?php selected( $filter_template_raw, (string) $tpl->id ); ?>><?php echo esc_html( $tpl->name ); ?></option>
 			<?php endforeach; ?>
 		</select>
+		<select name="per_page" onchange="this.form.submit()">
+			<?php foreach ( $allowed_per_page as $pp ) : ?>
+				<option value="<?php echo esc_attr( $pp ); ?>" <?php selected( $per_page, $pp ); ?>><?php echo esc_html( $pp ); ?> / trang</option>
+			<?php endforeach; ?>
+		</select>
 		<button type="submit" class="button">Lọc</button>
 		<?php if ( $has_active_filter ) : ?>
 			<a href="<?php echo esc_url( admin_url( 'admin.php?page=upi-drafts' ) ); ?>" class="button-link">Xoá bộ lọc</a>
@@ -156,6 +157,7 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 		// không phải form nên không bao giờ lồng được. Đổi Template từng dòng
 		// cũng dùng cùng cách (link GET dựng bằng JS khi đổi <select>).
 		?>
+		<p class="description">Hiển thị <?php echo esc_html( $showing_from ); ?>–<?php echo esc_html( $showing_to ); ?> trên tổng <?php echo esc_html( $total_matching ); ?> Draft khớp bộ lọc.</p>
 		<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" id="upi-drafts-form">
 			<?php wp_nonce_field( 'upi_bulk_publish_drafts' ); // nonce mặc định "_wpnonce" — giữ nguyên tên field cho Publish Selected/Hẹn giờ Publish (không đổi hành vi các action đã có). ?>
 			<?php wp_nonce_field( 'upi_bulk_delete_drafts', '_wpnonce_delete' ); // nonce riêng tên khác cho Xoá đã chọn, tránh đụng field trên. ?>
@@ -164,11 +166,25 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 			<input type="hidden" name="interval_seconds" id="upi-interval-hidden" value="" />
 			<input type="hidden" name="start_delay_seconds" id="upi-delay-hidden" value="" />
 			<input type="hidden" name="bulk_template_id" id="upi-bulk-template-id-hidden" value="" />
+			<?php
+			// Hidden filter hiện tại + cờ select_all_matching — để server biết
+			// khi nào phải LẤY LẠI toàn bộ ID khớp filter (mọi trang) thay vì
+			// chỉ dùng post_ids[] (chỉ chứa ID của các dòng đang hiển thị).
+			?>
+			<input type="hidden" name="select_all_matching" id="upi-select-all-matching-hidden" value="0" />
+			<input type="hidden" name="s" value="<?php echo esc_attr( $search_term ); ?>" />
+			<input type="hidden" name="product_cat" value="<?php echo esc_attr( $filter_cat_id ); ?>" />
+			<input type="hidden" name="template_id" value="<?php echo esc_attr( $filter_template_raw ); ?>" />
 
 			<div class="upi-bulk-toolbar">
-				<input type="checkbox" id="upi-drafts-select-all" onclick="document.querySelectorAll('.upi-draft-check').forEach(cb => cb.checked = this.checked)" />
-				<label for="upi-drafts-select-all">Chọn tất cả</label>
-				<button type="submit" class="button button-primary" onclick="return confirm('Publish ngay các sản phẩm đã chọn?');">Publish Selected</button>
+				<input type="checkbox" id="upi-drafts-select-all" />
+				<label for="upi-drafts-select-all">Chọn tất cả (trang này)</label>
+				<span class="upi-selected-count" id="upi-selected-count"></span>
+				<?php if ( $total_matching > count( $post_ids ) ) : ?>
+					<button type="button" class="upi-select-all-link" id="upi-select-all-matching-btn">Chọn tất cả <?php echo esc_html( $total_matching ); ?> sản phẩm khớp bộ lọc (mọi trang)</button>
+					<button type="button" class="upi-select-all-link hidden" id="upi-clear-select-all-matching-btn">Bỏ chọn tất cả</button>
+				<?php endif; ?>
+				<button type="button" class="button button-primary" id="upi-publish-selected-btn">Publish Selected</button>
 				<button type="button" class="button button-primary" id="upi-schedule-btn">Hẹn giờ Publish…</button>
 				<button type="button" class="button upi-btn-danger" id="upi-bulk-delete-btn">Xoá đã chọn</button>
 
@@ -190,7 +206,7 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 				</span>
 			</div>
 
-			<table class="wp-list-table widefat fixed striped">
+			<table class="wp-list-table widefat fixed striped upi-drafts-table">
 				<thead>
 					<tr>
 						<td class="check-column"></td>
@@ -239,9 +255,11 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 								<?php endif; ?>
 							</td>
 							<td>
-								<a href="<?php echo esc_url( $publish_url ); ?>" class="button button-small" onclick="return confirm('Publish sản phẩm này?');">Publish</a>
-								<a href="<?php echo esc_url( get_edit_post_link( $post_id ) ); ?>" target="_blank">Edit</a>
-								<a href="<?php echo esc_url( $delete_url ); ?>" class="upi-link-btn upi-link-danger" onclick="return confirm('Xoá vĩnh viễn sản phẩm này? Ảnh đã tải (trừ ảnh Template Gallery dùng chung) sẽ bị xoá luôn khỏi Media Library. Không thể hoàn tác.');">Xoá</a>
+								<div class="upi-drafts-actions">
+									<a href="<?php echo esc_url( $publish_url ); ?>" class="button button-small" onclick="return confirm('Publish sản phẩm này?');">Publish</a>
+									<a href="<?php echo esc_url( get_edit_post_link( $post_id ) ); ?>" class="button button-small" target="_blank">Edit</a>
+									<a href="<?php echo esc_url( $delete_url ); ?>" class="upi-link-btn upi-link-danger" onclick="return confirm('Xoá vĩnh viễn sản phẩm này? Ảnh đã tải (trừ ảnh Template Gallery dùng chung) sẽ bị xoá luôn khỏi Media Library. Không thể hoàn tác.');">Xoá</a>
+								</div>
 							</td>
 						</tr>
 					<?php endwhile; wp_reset_postdata(); ?>
@@ -310,6 +328,7 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 	var intervalHidden = document.getElementById('upi-interval-hidden');
 	var delayHidden     = document.getElementById('upi-delay-hidden');
 	var bulkDeleteBtn   = document.getElementById('upi-bulk-delete-btn');
+	var publishSelectedBtn = document.getElementById('upi-publish-selected-btn');
 	var quickCountInput = document.getElementById('upi-quick-count');
 	var quickSelectBtn  = document.getElementById('upi-quick-select-btn');
 	var bulkTemplateBtn    = document.getElementById('upi-bulk-template-btn');
@@ -317,13 +336,105 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 	var bulkTemplateIdHidden = document.getElementById('upi-bulk-template-id-hidden');
 	var changeTemplateUrl = <?php echo wp_json_encode( $change_template_url ); ?>;
 
+	var selectAllCheckbox      = document.getElementById('upi-drafts-select-all');
+	var selectedCountLabel     = document.getElementById('upi-selected-count');
+	var selectAllMatchingBtn   = document.getElementById('upi-select-all-matching-btn');
+	var clearSelectAllMatchingBtn = document.getElementById('upi-clear-select-all-matching-btn');
+	var selectAllMatchingHidden   = document.getElementById('upi-select-all-matching-hidden');
+	var totalMatchingCount        = <?php echo (int) $total_matching; ?>;
+	var selectAllMatchingMode      = false;
+
 	function checkboxes() {
 		return document.querySelectorAll('.upi-draft-check');
 	}
 
+	// Trong chế độ "Chọn tất cả (mọi trang)", số lượng thật sự áp dụng là
+	// TOÀN BỘ sản phẩm khớp bộ lọc (kể cả các trang không hiển thị), KHÔNG
+	// phải chỉ các checkbox đang thấy trên DOM.
 	function selectedCount() {
+		if (selectAllMatchingMode) {
+			return totalMatchingCount;
+		}
 		return document.querySelectorAll('.upi-draft-check:checked').length;
 	}
+
+	// Hiện rõ đang chọn bao nhiêu sản phẩm — trước đây bấm "Chọn tất cả"
+	// xong không có phản hồi gì trên UI nên không biết đã chọn được bao nhiêu.
+	function updateSelectedCountLabel() {
+		if (!selectedCountLabel) return;
+		var n = selectedCount();
+		if (selectAllMatchingMode) {
+			selectedCountLabel.textContent = 'Đã chọn tất cả ' + n + ' sản phẩm (mọi trang)';
+		} else if (n > 0) {
+			selectedCountLabel.textContent = 'Đã chọn ' + n + ' sản phẩm';
+		} else {
+			selectedCountLabel.textContent = '';
+		}
+	}
+
+	// Thoát chế độ "Chọn tất cả (mọi trang)" — gọi khi người dùng tự tick/bỏ
+	// tick 1 dòng cụ thể (lúc đó lựa chọn không còn là "toàn bộ" nữa) hoặc khi
+	// bấm "Bỏ chọn tất cả".
+	function exitSelectAllMatchingMode() {
+		if (!selectAllMatchingMode) return;
+		selectAllMatchingMode = false;
+		selectAllMatchingHidden.value = '0';
+		if (selectAllMatchingBtn) selectAllMatchingBtn.classList.remove('hidden');
+		if (clearSelectAllMatchingBtn) clearSelectAllMatchingBtn.classList.add('hidden');
+	}
+
+	if (selectAllCheckbox) {
+		selectAllCheckbox.addEventListener('click', function () {
+			exitSelectAllMatchingMode();
+			checkboxes().forEach(function (cb) { cb.checked = selectAllCheckbox.checked; });
+			updateSelectedCountLabel();
+		});
+	}
+
+	checkboxes().forEach(function (cb) {
+		cb.addEventListener('change', function () {
+			exitSelectAllMatchingMode();
+			updateSelectedCountLabel();
+		});
+	});
+
+	if (selectAllMatchingBtn) {
+		selectAllMatchingBtn.addEventListener('click', function () {
+			selectAllMatchingMode = true;
+			selectAllMatchingHidden.value = '1';
+			checkboxes().forEach(function (cb) { cb.checked = true; });
+			if (selectAllCheckbox) selectAllCheckbox.checked = true;
+			selectAllMatchingBtn.classList.add('hidden');
+			if (clearSelectAllMatchingBtn) clearSelectAllMatchingBtn.classList.remove('hidden');
+			updateSelectedCountLabel();
+		});
+	}
+
+	if (clearSelectAllMatchingBtn) {
+		clearSelectAllMatchingBtn.addEventListener('click', function () {
+			exitSelectAllMatchingMode();
+			checkboxes().forEach(function (cb) { cb.checked = false; });
+			if (selectAllCheckbox) selectAllCheckbox.checked = false;
+			updateSelectedCountLabel();
+		});
+	}
+
+	if (publishSelectedBtn) {
+		publishSelectedBtn.addEventListener('click', function () {
+			var n = selectedCount();
+			if (n === 0) {
+				alert('Chọn ít nhất 1 sản phẩm trước khi publish.');
+				return;
+			}
+			if (!confirm('Publish ngay ' + n + ' sản phẩm đã chọn?')) {
+				return;
+			}
+			actionField.value = 'upi_bulk_publish_drafts';
+			form.submit();
+		});
+	}
+
+	updateSelectedCountLabel();
 
 	// "Đổi Template" hàng loạt — dùng CHUNG form (đã có sẵn checkbox) nhưng
 	// đổi action + nonce field sang bulk-change-template, kèm template_id
@@ -409,8 +520,10 @@ $delete_url_base      = wp_nonce_url( admin_url( 'admin-post.php?action=upi_dele
 				alert('Nhập số lượng lớn hơn 0.');
 				return;
 			}
+			exitSelectAllMatchingMode();
 			var boxes = checkboxes();
 			boxes.forEach(function (cb, idx) { cb.checked = idx < n; });
+			updateSelectedCountLabel();
 			openScheduleModal();
 		});
 	}
